@@ -18,6 +18,7 @@ import (
 	"syscall"
 
 	"github.com/gofiber/fiber/v2"
+	fiberLogger "github.com/gofiber/fiber/v2/middleware/logger"
 )
 
 func main() {
@@ -86,7 +87,8 @@ func main() {
 	})
 
 	// Apply global middleware
-	app.Use(middleware.Logger())
+	app.Use(fiberLogger.New())
+	// app.Use(middleware.Logger())
 	app.Use(middleware.RateLimiter())
 
 	// Register models for auto-migration
