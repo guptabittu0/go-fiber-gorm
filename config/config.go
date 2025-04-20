@@ -34,8 +34,9 @@ type DatabaseConfig struct {
 
 // JWTConfig stores JWT configuration
 type JWTConfig struct {
-	Secret    string
-	ExpiresIn string
+	Secret          string
+	AccessExpiryIn  uint
+	RefreshExpiryIn uint
 }
 
 // RedisConfig stores Redis configuration
@@ -48,24 +49,33 @@ type RedisConfig struct {
 
 // LoadConfig reads configuration from .env file
 func LoadConfig() (*Config, error) {
-	err := godotenv.Load()
-	if err != nil {
+	if err := godotenv.Load(); err != nil {
 		return nil, fmt.Errorf("error loading .env file: %w", err)
 	}
 
-	dbPort, err := strconv.Atoi(getEnv("DB_PORT", "5432"))
+	dbPort, err := parseEnvInt("DB_PORT", 5432)
 	if err != nil {
-		return nil, fmt.Errorf("invalid DB_PORT: %w", err)
+		return nil, err
 	}
 
-	redisPort, err := strconv.Atoi(getEnv("REDIS_PORT", "6379"))
+	redisPort, err := parseEnvInt("REDIS_PORT", 6379)
 	if err != nil {
-		return nil, fmt.Errorf("invalid REDIS_PORT: %w", err)
+		return nil, err
 	}
 
-	redisDB, err := strconv.Atoi(getEnv("REDIS_DB", "0"))
+	redisDB, err := parseEnvInt("REDIS_DB", 0)
 	if err != nil {
-		return nil, fmt.Errorf("invalid REDIS_DB: %w", err)
+		return nil, err
+	}
+
+	accessExpiryIn, err := parseEnvUint("JWT_ACCESS_EXPIRY", 3600) // 1 hour
+	if err != nil {
+		return nil, err
+	}
+
+	refreshExpiryIn, err := parseEnvUint("JWT_REFRESH_EXPIRY", 604800) // 7 days
+	if err != nil {
+		return nil, err
 	}
 
 	return &Config{
@@ -82,8 +92,9 @@ func LoadConfig() (*Config, error) {
 			SSLMode:  getEnv("DB_SSL_MODE", "disable"),
 		},
 		JWT: JWTConfig{
-			Secret:    getEnv("JWT_SECRET", "your_secret_key"),
-			ExpiresIn: getEnv("JWT_EXPIRES_IN", "24h"),
+			Secret:          getEnv("JWT_SECRET", "your_secret_key"),
+			AccessExpiryIn:  uint(accessExpiryIn),
+			RefreshExpiryIn: uint(refreshExpiryIn),
 		},
 		Redis: RedisConfig{
 			Host:     getEnv("REDIS_HOST", "localhost"),
@@ -94,12 +105,36 @@ func LoadConfig() (*Config, error) {
 	}, nil
 }
 
-// Helper function to read environment variable with a default value
+// getEnv reads environment variable with a default value
 func getEnv(key, defaultValue string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
 	return defaultValue
+}
+
+// parseEnvInt parses an integer environment variable with a default value
+func parseEnvInt(key string, defaultValue int) (int, error) {
+	if value, exists := os.LookupEnv(key); exists {
+		intValue, err := strconv.Atoi(value)
+		if err != nil {
+			return 0, fmt.Errorf("invalid %s: %w", key, err)
+		}
+		return intValue, nil
+	}
+	return defaultValue, nil
+}
+
+// parseEnvUint parses an unsigned integer environment variable with a default value
+func parseEnvUint(key string, defaultValue uint) (uint, error) {
+	if value, exists := os.LookupEnv(key); exists {
+		uintValue, err := strconv.ParseUint(value, 10, 32)
+		if err != nil {
+			return 0, fmt.Errorf("invalid %s: %w", key, err)
+		}
+		return uint(uintValue), nil
+	}
+	return defaultValue, nil
 }
 
 // GetDSN returns the PostgreSQL connection string

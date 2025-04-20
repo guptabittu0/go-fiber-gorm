@@ -1,98 +1,110 @@
-# Go Fiber GORM Boilerplate
+# Go Fiber GORM API Boilerplate
 
-A production-ready RESTful API boilerplate using Go Fiber and GORM with advanced features for large-scale applications.
+A production-ready RESTful API boilerplate built with Go Fiber and GORM, designed to scale from small projects to large enterprise applications.
 
-## Features
+![Go Version](https://img.shields.io/badge/Go-1.21%2B-blue)
+![Fiber Version](https://img.shields.io/badge/Fiber-v2.50%2B-blue)
+![GORM Version](https://img.shields.io/badge/GORM-v1.25%2B-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-- **Go Fiber**: High-performance web framework
-- **GORM**: Feature-rich ORM with PostgreSQL support
-- **Clean Architecture**: Following best practices of separation of concerns
+## 🌟 Key Features
+
+- **[Go Fiber](https://github.com/gofiber/fiber)**: Ultra-fast HTTP framework built on top of Fasthttp
+- **[GORM](https://gorm.io)**: Feature-rich ORM with PostgreSQL integration
+- **Clean Architecture**: Well-structured code with separation of concerns
 - **API Versioning**: Support for multiple API versions
-- **Authentication**: JWT-based authentication system
-- **Authorization**: Role-based access control
-- **Middleware**: Authentication, logging, error handling, rate limiting, validation
-- **Configuration**: Environment-specific configuration using .env files
-- **Migrations**: Database migration system with rollback support
-- **Error Handling**: Centralized error handling with detailed error types
-- **Logging**: Structured logging with different levels
-- **Caching**: Redis-based caching for improved performance
-- **Rate Limiting**: Protection against abuse and DoS attacks
-- **Request Validation**: Automatic request validation using struct tags
-- **Metrics & Monitoring**: Prometheus metrics and monitoring dashboard
-- **Worker Pool**: Background task processing system
-- **Health Checks**: Advanced health check system for monitoring
-- **Containerization**: Docker and Docker Compose support
-- **CI/CD**: GitHub Actions workflow for continuous integration and deployment
-- **Swagger Documentation**: API documentation with Swagger
-- **Testing**: Comprehensive testing utilities for unit and integration tests
-- **Transaction Management**: Database transaction handling
+- **Authentication**: Complete JWT-based auth system with refresh tokens
+- **Authorization**: Role-based access control for fine-grained permissions
+- **Middleware**: Logging, error handling, rate limiting, JWT validation
+- **Configuration**: Environment-based configs with `.env` file support
+- **Database Migrations**: Automatic and manual migration support
+- **Redis Integration**: Caching and session management
+- **Validation**: Request validation using validator tags
+- **Structured Error Handling**: Consistent error responses
+- **Health Checks**: System monitoring endpoints
+- **Background Processing**: Worker pool for async tasks
+- **Docker Support**: Containerized development and deployment
+- **CI/CD Pipeline**: GitHub Actions workflow
+- **Hot Reload**: Fast development with Air
+- **Comprehensive Testing**: Framework for unit and integration tests
 
-## Project Structure
+## 📁 Project Structure
 
 ```
-├── .github/                      # GitHub Actions workflows
 ├── cmd/                          # Application entry points
-│   └── main.go                   # Main application
+│   ├── main.go                   # Main application
+│   └── migrate/                  # Database migration tool
 ├── config/                       # Configuration
-│   ├── config.go                 # Configuration handling
-│   └── env_loader.go             # Environment configuration
-├── internal/                     # Private application code
-│   ├── handler/                  # HTTP handlers
-│   ├── middleware/               # Custom middleware
-│   ├── model/                    # Data models
-│   ├── repository/               # Database operations
-│   └── service/                  # Business logic
-├── migrations/                   # Database migrations
-├── pkg/                          # Public libraries
-│   ├── auth/                     # Authentication utilities
-│   ├── cache/                    # Caching utilities
-│   ├── docs/                     # API documentation
+│   ├── config.go                 # Configuration structs
+│   └── env_loader.go             # Environment loader
+├── core/                         # Core framework components
+│   ├── cache/                    # Redis integration
+│   ├── database/                 # Database connection/transaction
 │   ├── errors/                   # Error handling
 │   ├── logger/                   # Logging utilities
-│   ├── monitoring/               # Metrics and monitoring
-│   └── worker/                   # Background processing
-├── routes/                       # Route definitions
+│   ├── middleware/               # Global middleware
+│   └── worker/                   # Background worker pool
+├── migrations/                   # Migration definitions
+├── modules/                      # Feature modules
+│   ├── auth/                     # Authentication/authorization
+│   ├── health/                   # Health check endpoints
+│   └── user/                     # User management
+├── routes/                       # Route registration
 ├── test/                         # Testing utilities
-├── .env.example                  # Example environment variables
-├── docker-compose.yml            # Docker Compose configuration
-├── Dockerfile                    # Docker image definition
-├── go.mod                        # Go module file
-├── go.sum                        # Go module checksums
-├── Makefile                      # Makefile for common operations
-└── README.md                     # Project documentation
+├── docker-compose.yml            # Docker services
+├── Dockerfile                    # Container definition
+├── go.mod                        # Dependencies
+└── Makefile                      # Build commands
 ```
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Go 1.21 or higher
+- Go 1.21+
 - PostgreSQL
 - Redis (optional but recommended)
-- Docker and Docker Compose (for containerized development)
+- Docker and Docker Compose (optional)
 
-### Installation
-
-#### Local Development
+### Local Development
 
 1. Clone the repository
-2. Configure your `.env` file (use `.env.example` as a template)
-```bash
-cp .env.example .env
-```
+   ```bash
+   git clone https://github.com/yourusername/go-fiber-gorm.git
+   cd go-fiber-gorm
+   ```
+
+2. Copy and configure environment variables
+   ```bash
+   cp .env.example .env
+   # Edit .env with your database credentials
+   ```
+
 3. Install dependencies
-```bash
-go mod tidy
-```
-4. Start the application
-```bash
-go run cmd/main.go
-```
+   ```bash
+   go mod tidy
+   ```
 
-#### Using Docker
+4. Run database migrations
+   ```bash
+   go run cmd/migrate/migrate.go
+   ```
+
+5. Run the application
+   ```bash
+   go run cmd/main.go
+   ```
+
+6. For hot reloading during development
+   ```bash
+   make dev
+   # or directly: air
+   ```
+
+### Docker Development
 
 ```bash
-# Start all services with Docker Compose
+# Start all services (app, postgres, redis)
 docker-compose up -d
 
 # View logs
@@ -102,9 +114,7 @@ docker-compose logs -f
 docker-compose down
 ```
 
-### Using Make Commands
-
-This project includes a Makefile for common operations:
+## 📋 Available Make Commands
 
 ```bash
 # Build the application
@@ -113,103 +123,226 @@ make build
 # Run the application
 make run
 
+# Run with hot reload (using air)
+make dev
+
 # Run tests
 make test
 
-# Run linter
-make lint
+# Run with test coverage
+make coverage
+
+# Run database migrations
+make migrate-up
+
+# Rollback last migration
+make migrate-down
+
+# Build Docker image
+make docker-build
 
 # Deploy with Docker Compose
 make docker-compose-up
+
+# Generate a new module
+make gen-module
+# You'll be prompted for the module name
 ```
 
-## API Documentation
+## 🔐 Authentication
 
-API documentation is available via Swagger at:
-```
-http://localhost:8080/swagger/
-```
+The boilerplate includes a complete JWT authentication system:
 
-## Monitoring
+1. Register a new user:
+   ```http
+   POST /api/v1/auth/register
+   {
+     "name": "John Doe",
+     "email": "john@example.com",
+     "password": "securepassword"
+   }
+   ```
 
-Monitoring endpoints are available at:
-- Dashboard: `http://localhost:8080/dashboard`
-- Metrics: `http://localhost:8080/metrics` (Prometheus compatible)
+2. Login to get access and refresh tokens:
+   ```http
+   POST /api/v1/auth/login
+   {
+     "email": "john@example.com",
+     "password": "securepassword"
+   }
+   ```
 
-## Health Checks
+3. Use the JWT token in subsequent requests:
+   ```http
+   GET /api/v1/users
+   Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   ```
 
-Health check endpoints:
-- Basic: `http://localhost:8080/health`
-- Detailed: `http://localhost:8080/health/details`
+4. Refresh your token when it expires:
+   ```http
+   POST /api/v1/auth/refresh-token
+   {
+     "refresh_token": "your-refresh-token"
+   }
+   ```
 
-## Authentication and Authorization
+## 🏗 API Routes
 
-The API uses JWT for authentication. Protected routes require a valid JWT token in the Authorization header:
-```
-Authorization: Bearer your-jwt-token
-```
+### Auth Module
+- `POST /api/v1/auth/register` - Register a new user
+- `POST /api/v1/auth/login` - Login user
+- `POST /api/v1/auth/refresh-token` - Refresh access token
+- `POST /api/v1/auth/logout` - Logout (invalidate current session)
+- `POST /api/v1/auth/logout-all` - Logout from all devices
+- `POST /api/v1/auth/change-password` - Change user password
 
-To obtain a token (example flow):
-1. Create a user via the `/api/v1/users` endpoint
-2. Login via the `/api/v1/auth/login` endpoint to get a JWT token
-3. Use this token for protected routes
+### User Module
+- `POST /api/v1/users` - Create a user (admin only)
+- `GET /api/v1/users` - List all users
+- `GET /api/v1/users/:id` - Get user by ID
+- `PUT /api/v1/users/:id` - Update user
+- `DELETE /api/v1/users/:id` - Delete user (admin only)
 
-## Environment Configuration
+### Health Module
+- `GET /api/v1/health` - Basic health check
+- `GET /api/v1/health/details` - Detailed health check with component status
 
-The application supports different environments through environment-specific .env files:
+## ⚙️ Configuration
+
+The application uses environment-specific configuration files:
+
 - `.env` - Default environment variables
-- `.env.development` - Development environment overrides
-- `.env.testing` - Testing environment overrides
-- `.env.production` - Production environment overrides
+- `.env.development` - Development-specific overrides
+- `.env.testing` - Testing overrides
+- `.env.production` - Production overrides
 - `.env.local` - Local overrides (not committed to git)
 
-## Migrations
+### Environment Variables
 
-Migrations are automatically run when the application starts. You can also run them manually:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SERVER_PORT` | Port for the HTTP server | `8080` |
+| `SERVER_ENV` | Environment (development/production) | `development` |
+| `SERVER_TIMEOUT` | Request timeout in seconds | `10` |
+| `SERVER_READ_TIMEOUT` | Read timeout in seconds | `15` |
+| `SERVER_WRITE_TIMEOUT` | Write timeout in seconds | `15` |
+| `DB_HOST` | Database host | `localhost` |
+| `DB_PORT` | Database port | `5432` |
+| `DB_USER` | Database username | `postgres` |
+| `DB_PASSWORD` | Database password | `postgres` |
+| `DB_NAME` | Database name | `fiber_gorm` |
+| `DB_SSL_MODE` | Database SSL mode | `disable` |
+| `REDIS_HOST` | Redis host | `localhost` |
+| `REDIS_PORT` | Redis port | `6379` |
+| `REDIS_PASSWORD` | Redis password | - |
+| `JWT_SECRET` | Secret key for JWT | `your-secret-key` |
+| `JWT_EXPIRY` | JWT expiration time | `15m` |
+| `REFRESH_TOKEN_EXPIRY` | Refresh token expiration | `168h` |
+
+## 🧪 Testing
+
+The project includes utilities for both unit and integration tests:
+
 ```bash
-# Run migrations up
-make migrate-up
+# Run all tests
+make test
 
-# Roll back last migration
-make migrate-down
+# Run tests with coverage report
+make coverage
 ```
 
-## Docker Deployment
+For integration tests, the `TestRequest` utility simplifies API testing:
 
-The included Dockerfile builds a production-ready container. Example deployment:
+```go
+func TestUserCreation(t *testing.T) {
+    app := test.SetupTestApp()
+    
+    resp := test.MakeTestRequest(t, app, test.TestRequest{
+        Method: "POST",
+        URL:    "/api/v1/auth/register",
+        Body: map[string]string{
+            "name":     "Test User",
+            "email":    "test@example.com",
+            "password": "password123",
+        },
+    })
+    
+    assert.Equal(t, 201, resp.StatusCode)
+}
+```
+
+## 🧱 Architecture
+
+This boilerplate follows clean architecture principles:
+
+1. **Controllers/Handlers**: Handle HTTP requests/responses
+2. **Services**: Implement business logic
+3. **Repositories**: Handle data access and storage
+4. **Models**: Define data structures
+5. **DTOs**: Handle data transfer objects
+
+Each module (like `auth`, `user`) contains its own implementation of these components, making the codebase modular and maintainable.
+
+## 🔧 Performance Optimizations
+
+- Connection pooling for database and Redis
+- Request rate limiting
+- Efficient JSON serialization/deserialization
+- Middleware execution optimization
+- Database query optimization with GORM
+- Redis-based caching for frequently accessed data
+- Worker pool for background processing
+- Middleware short-circuiting
+
+## 🔒 Security Features
+
+- JWT token-based authentication
+- Role-based authorization
+- Password hashing with bcrypt
+- Request validation to prevent injection attacks
+- Rate limiting to prevent brute force attacks
+- CORS protection
+- XSS protection headers
+- SQL injection protection via GORM
+
+## 🚢 Deployment
+
+The project includes Docker and Docker Compose configurations for easy deployment:
+
 ```bash
-# Build the image
-docker build -t fiber-gorm-api .
+# Build the Docker image
+docker build -t go-fiber-gorm-api .
 
 # Run the container
-docker run -p 8080:8080 --env-file .env.production fiber-gorm-api
+docker run -p 8080:8080 --env-file .env.production go-fiber-gorm-api
 ```
 
-## CI/CD Pipeline
+## 📚 Credits
 
-The project includes a GitHub Actions workflow for CI/CD in the `.github/workflows` directory. It:
-1. Runs unit and integration tests
-2. Performs code quality checks
-3. Builds the application
-4. Creates and pushes a Docker image
-5. (Can be extended for deployment)
+- [Fiber](https://github.com/gofiber/fiber) - Express-inspired web framework
+- [GORM](https://gorm.io) - ORM library for Go
+- [JWT-Go](https://github.com/golang-jwt/jwt) - JWT implementation
+- [Testify](https://github.com/stretchr/testify) - Testing toolkit
+- [Air](https://github.com/cosmtrek/air) - Live reload for Go apps
+- [Validator](https://github.com/go-playground/validator) - Request validation
+- [Go-Redis](https://github.com/go-redis/redis) - Redis client for Go
 
-## Architecture
-
-This application follows clean architecture principles:
-1. **Handler Layer**: Handles HTTP requests and responses
-2. **Service Layer**: Contains business logic
-3. **Repository Layer**: Handles data access
-4. **Model Layer**: Defines data structures
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Commit your changes: `git commit -am 'Add feature'`
-4. Push to the branch: `git push origin feature-name`
-5. Submit a pull request
-
-## License
+## 📄 License
 
 This project is licensed under the MIT License.
+
+## 👥 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 🙏 Acknowledgments
+
+- Special thanks to the Go, Fiber, and GORM communities
+- Inspired by best practices in Go API development
+- Built with ❤️ for high-performance Go applications

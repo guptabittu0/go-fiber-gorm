@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"go-fiber-gorm/config"
 	"go-fiber-gorm/modules/auth"
 	"go-fiber-gorm/modules/health"
 	"go-fiber-gorm/modules/user"
@@ -14,7 +15,7 @@ import (
 )
 
 // SetupRoutes configures the application routes and middleware
-func SetupRoutes(app *fiber.App, db *gorm.DB, redisClient *redis.Client) {
+func SetupRoutes(app *fiber.App, cfg *config.Config, db *gorm.DB, redisClient *redis.Client) {
 	// Global middleware
 	app.Use(cors.New())
 	app.Use(recover.New())
@@ -38,9 +39,9 @@ func SetupRoutes(app *fiber.App, db *gorm.DB, redisClient *redis.Client) {
 		authRepo,
 		userRepo,
 		auth.ServiceConfig{
-			JWTSecret:     "your-secret-key",  // Should be loaded from config
-			AccessExpiry:  time.Hour * 1,      // 1 hour
-			RefreshExpiry: time.Hour * 24 * 7, // 7 days
+			JWTSecret:     cfg.JWT.Secret,                         // Should be loaded from config
+			AccessExpiry:  time.Duration(cfg.JWT.AccessExpiryIn),  // 1 hour
+			RefreshExpiry: time.Duration(cfg.JWT.RefreshExpiryIn), // 7 days
 		},
 	)
 	authMiddleware := auth.NewMiddleware(authService)

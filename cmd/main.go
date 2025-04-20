@@ -98,7 +98,7 @@ func main() {
 	}
 
 	// Setup routes using the new modular structure
-	routes.SetupRoutes(app, db, redisClient)
+	routes.SetupRoutes(app, cfg, db, redisClient)
 
 	// Start server in a goroutine
 	go func() {
