@@ -3,15 +3,14 @@ package main
 import (
 	"fmt"
 	"go-fiber-gorm/config"
-	"go-fiber-gorm/internal/handler"
-	"go-fiber-gorm/internal/middleware"
-	"go-fiber-gorm/internal/repository"
-	"go-fiber-gorm/internal/service"
+	"go-fiber-gorm/core/cache"
+	"go-fiber-gorm/core/database"
+	appErrors "go-fiber-gorm/core/errors"
+	"go-fiber-gorm/core/logger"
+	"go-fiber-gorm/core/middleware"
 	"go-fiber-gorm/migrations"
-	"go-fiber-gorm/pkg/cache"
-	"go-fiber-gorm/pkg/logger"
-	"go-fiber-gorm/pkg/monitoring"
-	"go-fiber-gorm/pkg/worker"
+	"go-fiber-gorm/modules/auth"
+	"go-fiber-gorm/modules/user"
 	"go-fiber-gorm/routes"
 	"os"
 	"os/signal"
@@ -47,14 +46,14 @@ func main() {
 	logger.Info("Environment:", cfg.Server.Env)
 	logger.Info("Go Version:", runtime.Version())
 
-	// Initialize monitoring
-	monitoring.InitMetrics()
-
 	// Connect to database
-	db, err := repository.ConnectDatabase(&cfg.Database)
+	dbConn, err := database.NewConnection(&cfg.Database)
 	if err != nil {
 		logger.Fatal("Failed to connect to database:", err)
 	}
+
+	// Get the GORM DB instance
+	db := dbConn.GetDB()
 
 	// Connect to Redis (optional - will continue if Redis isn't available)
 	redisClient, err := cache.ConnectRedis(&cfg.Redis)
@@ -62,54 +61,49 @@ func main() {
 		logger.Warn("Failed to connect to Redis, continuing without cache:", err)
 	}
 
-	// Set JWT secret for auth middleware
-	middleware.SetJWTSecret(cfg.JWT.Secret)
-
 	// Run migrations
 	if err := migrations.RunMigrations(db); err != nil {
 		logger.Fatal("Failed to run migrations:", err)
 	}
 
-	// Initialize repositories
-	userRepo := repository.NewUserRepository(db)
+	// ?? Initialize worker pool for background tasks
+	// workerPool := worker.NewPool(runtime.NumCPU())
+	// workerPool.Start()
+	// defer workerPool.Stop()
 
-	// Initialize transaction manager
-	txManager := repository.NewTxManager(db)
-	// Initialize services
-	userService := service.NewUserService(userRepo)
-
-	// Initialize handlers
-	userHandler := handler.NewUserHandler(userService)
-	healthHandler := handler.NewHealthHandler()
-
-	// Initialize worker pool for background tasks
-	workerPool := worker.NewPool(runtime.NumCPU())
-	workerPool.Start()
-	defer workerPool.Stop()
-
-	// Submit example background task
-	workerPool.Submit(func() error {
-		logger.Info("Running startup tasks in background worker...")
-		// Your background task logic here
-		return nil
-	})
+	// // Submit example background task
+	// workerPool.Submit(func() error {
+	// 	logger.Info("Running startup tasks in background worker...")
+	// 	// Your background task logic here
+	// 	return nil
+	// })
 
 	// Setup Fiber app
 	app := fiber.New(fiber.Config{
 		Prefork:           cfg.Server.Env == "production",
 		EnablePrintRoutes: cfg.Server.Env != "production",
+		ErrorHandler:      appErrors.ErrorHandler,
 	})
 
-	// Setup monitoring
-	monitoring.SetupMonitoring(app)
+	// Apply global middleware
+	app.Use(middleware.Logger())
+	app.Use(middleware.RateLimiter())
 
-	// Setup routes with monitoring
-	routes.SetupRoutes(app, cfg, userHandler, healthHandler)
+	// Register models for auto-migration
+	if err := dbConn.AutoMigrate(
+		&user.User{},
+		&auth.Session{},
+	); err != nil {
+		logger.Fatal("Failed to auto migrate models:", err)
+	}
+
+	// Setup routes using the new modular structure
+	routes.SetupRoutes(app, db, redisClient)
 
 	// Start server in a goroutine
 	go func() {
 		serverPort := cfg.Server.Port
-		logger.Info("Server starting on port", serverPort)
+		logger.Info("Server starting on port ", serverPort)
 		if err := app.Listen(":" + serverPort); err != nil {
 			logger.Fatal("Failed to start server:", err)
 		}

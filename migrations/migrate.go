@@ -1,8 +1,9 @@
 package migrations
 
 import (
-	"go-fiber-gorm/internal/model"
-	"go-fiber-gorm/pkg/logger"
+	"go-fiber-gorm/core/logger"
+	"go-fiber-gorm/modules/auth"
+	"go-fiber-gorm/modules/user"
 
 	"gorm.io/gorm"
 )
@@ -19,10 +20,19 @@ var Migrations = []Migration{
 	{
 		Name: "create_users_table",
 		Migrate: func(db *gorm.DB) error {
-			return db.AutoMigrate(&model.User{})
+			return db.AutoMigrate(&user.User{})
 		},
 		Rollback: func(db *gorm.DB) error {
-			return db.Migrator().DropTable(&model.User{})
+			return db.Migrator().DropTable(&user.User{})
+		},
+	},
+	{
+		Name: "create_sessions_table",
+		Migrate: func(db *gorm.DB) error {
+			return db.AutoMigrate(&auth.Session{})
+		},
+		Rollback: func(db *gorm.DB) error {
+			return db.Migrator().DropTable(&auth.Session{})
 		},
 	},
 	// Add more migrations as needed

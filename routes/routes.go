@@ -1,70 +1,63 @@
 package routes
 
 import (
-	"go-fiber-gorm/config"
-	"go-fiber-gorm/internal/handler"
-	"go-fiber-gorm/internal/middleware"
-	"go-fiber-gorm/pkg/docs"
-	"go-fiber-gorm/pkg/errors"
+	"go-fiber-gorm/modules/auth"
+	"go-fiber-gorm/modules/health"
+	"go-fiber-gorm/modules/user"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 )
 
-// SetupRoutes configures all application routes
-func SetupRoutes(app *fiber.App, cfg *config.Config, userHandler *handler.UserHandler, healthHandler *handler.HealthHandler) {
+// SetupRoutes configures the application routes and middleware
+func SetupRoutes(app *fiber.App, db *gorm.DB, redisClient *redis.Client) {
 	// Global middleware
+	app.Use(cors.New())
 	app.Use(recover.New())
-	app.Use(middleware.Logger())
-	app.Use(middleware.MonitorRequests()) // Add monitoring middleware
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-	}))
 
-	// API Rate Limiter for all routes
-	if cfg.Server.Env == "production" {
-		app.Use(middleware.RateLimiter())
-	}
+	// API routes with version prefix
+	api := app.Group("/api/v1")
 
-	// Set up custom error handling middleware
-	app.Use(func(c *fiber.Ctx) error {
-		err := c.Next()
-		if err != nil {
-			return errors.ErrorHandler(c, err)
-		}
-		return nil
-	})
+	// Health module setup
+	healthService := health.NewService(db, redisClient) // Replace nil with redis client if available
+	healthController := health.NewController(healthService)
+	healthController.RegisterRoutes(api)
 
-	// Health check endpoints
-	app.Get("/health", healthHandler.Check)
-	app.Get("/health/details", healthHandler.DetailedCheck)
+	// User module setup
+	userRepo := user.NewRepository(db)
+	userService := user.NewService(userRepo)
+	userController := user.NewController(userService)
 
-	// Setup Swagger documentation
-	docs.SetupSwagger(app, cfg)
+	// Auth module setup
+	authRepo := auth.NewRepository(db)
+	authService := auth.NewService(
+		authRepo,
+		userRepo,
+		auth.ServiceConfig{
+			JWTSecret:     "your-secret-key",  // Should be loaded from config
+			AccessExpiry:  time.Hour * 1,      // 1 hour
+			RefreshExpiry: time.Hour * 24 * 7, // 7 days
+		},
+	)
+	authMiddleware := auth.NewMiddleware(authService)
+	authController := auth.NewController(authService)
 
-	// API routes
-	api := app.Group("/api")
-	v1 := api.Group("/v1")
+	// Register auth routes
+	authController.RegisterRoutes(api)
 
-	// User routes
-	users := v1.Group("/users")
-	users.Post("/", middleware.ValidateRequest(handler.CreateUserRequest{}), userHandler.Create)
-	users.Get("/", userHandler.GetAll)
+	// Register user routes (using auth middleware for protected routes)
+	users := api.Group("/users")
+	users.Post("/", authMiddleware.RoleRequired("admin"), userController.Create)
+	users.Get("/", userController.GetAll)
+	users.Get("/:id", authMiddleware.Protected(), userController.GetByID)
+	users.Put("/:id", authMiddleware.Protected(), userController.Update)
+	users.Delete("/:id", authMiddleware.RoleRequired("admin"), userController.Delete)
 
-	// Protected user routes
-	usersProtected := users.Use(middleware.Protected())
-	usersProtected.Get("/:id", userHandler.GetByID)
-	usersProtected.Put("/:id", middleware.ValidateRequest(handler.UpdateUserRequest{}), userHandler.Update)
-	usersProtected.Delete("/:id", userHandler.Delete)
-
-	// Admin routes example
-	admin := v1.Group("/admin").Use(middleware.Protected(), middleware.HasRole("admin"))
-	admin.Get("/users", userHandler.GetAll) // Admin-only route example
-
-	// Default 404 handler
+	// 404 Handler
 	app.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,

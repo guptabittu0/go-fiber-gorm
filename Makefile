@@ -1,4 +1,4 @@
-.PHONY: build run test clean docker-build docker-run docker-compose-up docker-compose-down migrate-up migrate-down
+.PHONY: build run test clean docker-build docker-run docker-compose-up docker-compose-down migrate-up migrate-down dev mock coverage swagger swag-init air-install air-dev tools gen-module bench profile security-check
 
 # App name
 APP_NAME=fiber-gorm-api
@@ -57,12 +57,68 @@ lint:
 # Run a migration
 migrate-up:
 	@echo "Running migrations up"
-	$(GORUN) cmd/migrate/up.go
+	$(GORUN) cmd/migrate/migrate.go
 
 # Rollback a migration
 migrate-down:
 	@echo "Running migrations down"
-	$(GORUN) cmd/migrate/down.go
+	$(GORUN) cmd/migrate/migrate.go -down
+
+# Hot reload for development using air
+air-install:
+	go install github.com/cosmtrek/air@latest
+
+# Run the application with hot reload
+dev: air-install
+	air
+
+# Generate mock objects for testing
+mock:
+	mockery --all --dir=./internal --output=./test/mocks
+
+# Run tests with coverage
+coverage:
+	$(GOTEST) -coverprofile=coverage.out ./...
+	$(GOCMD) tool cover -html=coverage.out
+
+# Update Swagger documentation
+swagger: swag-init
+
+# Initialize Swagger docs
+swag-init:
+	swag init -g cmd/main.go -o ./pkg/docs
+
+# Install commonly used development tools
+tools:
+	go install github.com/cosmtrek/air@latest
+	go install github.com/swaggo/swag/cmd/swag@latest
+	go install github.com/vektra/mockery/v2@latest
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/go-delve/delve/cmd/dlv@latest
+
+# Generate a new module with basic files
+gen-module:
+	@read -p "Enter module name: " module_name; \
+	mkdir -p modules/$$module_name; \
+	touch modules/$$module_name/model.go; \
+	touch modules/$$module_name/dto.go; \
+	touch modules/$$module_name/repository.go; \
+	touch modules/$$module_name/service.go; \
+	touch modules/$$module_name/controller.go; \
+	echo "Module $$module_name created with basic files"
+
+# Run benchmarks
+bench:
+	$(GOTEST) -bench=. -benchmem ./...
+
+# CPU profiling
+profile:
+	$(GORUN) -cpuprofile=cpu.prof -memprofile=mem.prof cmd/main.go
+	$(GOCMD) tool pprof -http=:8081 cpu.prof
+
+# Check for security issues
+security-check:
+	gosec -exclude-generated ./...
 
 # Show help
 help:
@@ -79,3 +135,14 @@ help:
 	@echo " - lint: Lint the code"
 	@echo " - migrate-up: Run migrations up"
 	@echo " - migrate-down: Roll back migrations"
+	@echo " - dev: Run with hot reload (using air)"
+	@echo " - air-install: Install air for hot reload"
+	@echo " - mock: Generate mock objects"
+	@echo " - coverage: Run tests and generate coverage report"
+	@echo " - swagger: Update Swagger documentation"
+	@echo " - swag-init: Initialize Swagger documentation"
+	@echo " - tools: Install development tools"
+	@echo " - gen-module: Generate a new module with basic files"
+	@echo " - bench: Run benchmarks"
+	@echo " - profile: Run the application with profiling"
+	@echo " - security-check: Check for security issues"
